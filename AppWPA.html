@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Women Protection App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 28rem; /* Equivalent to Kivy's typical mobile width */
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        input, button {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+        button {
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .status-label {
+            min-height: 2rem; /* Ensure space even when empty */
+        }
+        video {
+            max-width: 100%;
+            border-radius: 0.5rem;
+            display: none; /* Hidden by default */
+        }
+        canvas {
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="login-screen" class="container">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Login</h1>
+        
+        <input type="text" id="name-input" placeholder="Enter Name" class="border border-gray-300 focus:ring-blue-500 focus:border-blue-500 outline-none">
+        <input type="email" id="email-input" placeholder="Enter Email" class="border border-gray-300 focus:ring-blue-500 focus:border-blue-500 outline-none">
+        <input type="password" id="password-input" placeholder="Enter Password" class="border border-gray-300 focus:ring-blue-500 focus:border-blue-500 outline-none">
+        <input type="text" id="auth-id-input" placeholder="Enter Auth ID" class="border border-gray-300 focus:ring-blue-500 focus:border-blue-500 outline-none">
+        
+        <p id="error-label" class="text-red-600 text-center text-sm min-h-[1.5rem]"></p>
+        
+        <button id="login-button" class="bg-blue-600 text-white font-semibold hover:bg-blue-700">Login</button>
+    </div>
+
+    <div id="main-screen" class="container hidden">
+        <h1 class="text-3xl font-bold text-center text-red-600 mb-4">Women Protection App</h1>
+        <p id="status-label" class="text-lg text-center text-gray-700 mb-4 status-label">Welcome!</p>
+
+        <button id="start-voice-detection-button" class="bg-purple-600 text-white font-semibold hover:bg-purple-700">Start Voice Detection</button>
+        <button id="whatsapp-sms-sos-button" class="bg-green-600 text-white font-semibold hover:bg-green-700">WhatsApp & SMS SOS</button>
+        <button id="fake-call-button" class="bg-yellow-600 text-white font-semibold hover:bg-yellow-700">Fake Call</button>
+        <button id="emergency-alarm-button" class="bg-red-600 text-white font-semibold hover:bg-red-700">Emergency Alarm</button>
+        <button id="capture-photo-button" class="bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Capture Photo</button>
+        <button id="start-video-recording-button" class="bg-pink-600 text-white font-semibold hover:bg-pink-700">Video Recording</button>
+        <button id="live-location-tracking-button" class="bg-teal-600 text-white font-semibold hover:bg-teal-700">Live Location Tracking</button>
+        <button id="women-safety-tutorial-button" class="bg-gray-600 text-white font-semibold hover:bg-gray-700">Women Safety Tutorial</button>
+        
+        <video id="video-feed" autoplay muted></video>
+        <canvas id="photo-canvas"></canvas>
+        <img id="captured-image" class="hidden mt-4 rounded-lg shadow-md" alt="Captured Photo">
+        <a id="download-link" class="hidden text-center text-blue-600 hover:underline mt-2" download="captured_media.png">Download Captured Media</a>
+
+        <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                <p id="message-text" class="text-gray-800 text-lg mb-4"></p>
+                <button id="message-ok-button" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dummy Authentication Data
+        const VALID_USERS = {
+            "abc@gmail.com": { "password": "man123", "auth_id": "2005" }
+        };
+
+        // DOM Elements
+        const loginScreen = document.getElementById('login-screen');
+        const mainScreen = document.getElementById('main-screen');
+        const nameInput = document.getElementById('name-input');
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
+        const authIdInput = document.getElementById('auth-id-input');
+        const errorLabel = document.getElementById('error-label');
+        const loginButton = document.getElementById('login-button');
+        const statusLabel = document.getElementById('status-label');
+
+        const startVoiceDetectionButton = document.getElementById('start-voice-detection-button');
+        const whatsappSmsSosButton = document.getElementById('whatsapp-sms-sos-button');
+        const fakeCallButton = document.getElementById('fake-call-button');
+        const emergencyAlarmButton = document.getElementById('emergency-alarm-button');
+        const capturePhotoButton = document.getElementById('capture-photo-button');
+        const startVideoRecordingButton = document.getElementById('start-video-recording-button');
+        const liveLocationTrackingButton = document.getElementById('live-location-tracking-button');
+        const womenSafetyTutorialButton = document.getElementById('women-safety-tutorial-button');
+
+        const videoFeed = document.getElementById('video-feed');
+        const photoCanvas = document.getElementById('photo-canvas');
+        const capturedImage = document.getElementById('captured-image');
+        const downloadLink = document.getElementById('download-link');
+
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const messageOkButton = document.getElementById('message-ok-button');
+
+        let mediaRecorder;
+        let recordedChunks = [];
+        let videoStream = null; // To keep track of the active media stream
+
+        // --- Utility Functions ---
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        messageOkButton.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+
+        /**
+         * Updates the status label on the main screen.
+         * @param {string} text - The status message.
+         * @param {string} [colorClass='text-gray-700'] - Tailwind CSS color class.
+         */
+        function updateStatus(text, colorClass = 'text-gray-700') {
+            statusLabel.textContent = text;
+            statusLabel.className = `text-lg text-center mb-4 status-label ${colorClass}`;
+        }
+
+        /**
+         * Stops all active media tracks (camera/microphone).
+         */
+        function stopMediaTracks() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                videoFeed.srcObject = null;
+                videoFeed.classList.add('hidden');
+            }
+        }
+
+        // --- Login Screen Logic ---
+
+        loginButton.addEventListener('click', () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            const authId = authIdInput.value;
+
+            if (email in VALID_USERS && VALID_USERS[email].password === password && VALID_USERS[email].auth_id === authId) {
+                loginScreen.classList.add('hidden');
+                mainScreen.classList.remove('hidden');
+                updateStatus("Welcome! How can I help you?");
+            } else {
+                errorLabel.textContent = "Invalid credentials!";
+            }
+        });
+
+        // --- Main Screen Functionalities ---
+
+        /**
+         * Starts listening for the word "Help" using Web Speech API.
+         */
+        startVoiceDetectionButton.addEventListener('click', () => {
+            if (!('webkitSpeechRecognition' in window)) {
+                showMessageBox("Your browser does not support Web Speech API. Please use Chrome.");
+                return;
+            }
+
+            updateStatus("Listening for 'Help'...", 'text-purple-700');
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US'; // Or 'hi-IN' for Hindi, but 'Help' is English.
+
+            let helpCount = 0;
+            let lastDetectionTime = 0; // To prevent multiple detections from a single utterance
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                console.log(`Heard: ${transcript}`);
+                const currentTime = Date.now();
+
+                if (transcript.includes("help") && (currentTime - lastDetectionTime > 2000)) { // 2 seconds debounce
+                    helpCount++;
+                    lastDetectionTime = currentTime;
+                    updateStatus(`'Help' Detected (${helpCount}/3)`, 'text-purple-700');
+                    if (helpCount >= 3) {
+                        recognition.stop();
+                        updateStatus("Three 'Help' detections! Sending SOS...", 'text-red-700');
+                        setTimeout(sendSos, 1000); // Send SOS after a short delay
+                    }
+                } else if (!transcript.includes("help")) {
+                    helpCount = 0; // Reset if other words are detected
+                    updateStatus("Listening for 'Help'...", 'text-purple-700');
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                updateStatus(`Speech recognition error: ${event.error}`, 'text-red-600');
+                if (event.error === 'not-allowed') {
+                    showMessageBox("Microphone access denied. Please allow microphone access in your browser settings.");
+                }
+            };
+
+            recognition.onend = () => {
+                if (helpCount < 3) {
+                    updateStatus("Voice detection stopped. Click to restart.", 'text-gray-700');
+                }
+            };
+
+            recognition.start();
+            updateStatus("Listening for 'Help'...", 'text-purple-700');
+        });
+
+        /**
+         * Sends a WhatsApp message and simulates an SMS message.
+         */
+        whatsappSmsSosButton.addEventListener('click', () => {
+            updateStatus("Attempting to send SOS...", 'text-green-700');
+            const emergencyMessage = "EMERGENCY: I need help! My location is: ";
+
+            // Get current location for SOS message
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+                        const fullMessage = encodeURIComponent(`${emergencyMessage}${mapsUrl}`);
+
+                        // WhatsApp SOS (opens new tab, user needs to click send)
+                        const whatsappUrl = `https://wa.me/?text=${fullMessage}`;
+                        window.open(whatsappUrl, '_blank');
+                        updateStatus("WhatsApp link opened. Please click 'Send' in WhatsApp Web.", 'text-green-700');
+
+                        // SMS SOS (requires backend)
+                        showMessageBox("SMS sending requires a backend server (e.g., using Twilio API securely). This functionality is not directly available in the browser.");
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        updateStatus("Could not get location. Sending SOS without location.", 'text-orange-600');
+                        const fullMessage = encodeURIComponent(`${emergencyMessage}Location unavailable.`);
+                        const whatsappUrl = `https://wa.me/?text=${fullMessage}`;
+                        window.open(whatsappUrl, '_blank');
+                        showMessageBox("SMS sending requires a backend server (e.g., using Twilio API securely). This functionality is not directly available in the browser.");
+                    }
+                );
+            } else {
+                updateStatus("Geolocation is not supported by your browser. Sending SOS without location.", 'text-orange-600');
+                const fullMessage = encodeURIComponent(`${emergencyMessage}Location unavailable.`);
+                const whatsappUrl = `https://wa.me/?text=${fullMessage}`;
+                window.open(whatsappUrl, '_blank');
+                showMessageBox("SMS sending requires a backend server (e.g., using Twilio API securely). This functionality is not directly available in the browser.");
+            }
+        });
+
+        /**
+         * Simulates a fake call by playing a short tone and showing a message.
+         */
+        fakeCallButton.addEventListener('click', () => {
+    updateStatus("Simulating fake call...", 'text-yellow-700');
+
+    // Show fake incoming call message
+    showMessageBox("📞 Fake call incoming! (Simulated)");
+
+    // Create audio element for ringtone
+    const audio = new Audio('fake_call_audio.mp3'); // Path to your ringtone file
+    audio.loop = true;
+    audio.play();
+
+    // Random duration between 20-30 seconds
+    const callDuration = Math.floor(Math.random() * 11 + 20) * 1000;
+
+    setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        updateStatus("Fake call ended.", 'text-gray-700');
+    }, callDuration);
+});
+
+
+        /**
+         * Plays a loud emergency alarm sound using Tone.js.
+         */
+        emergencyAlarmButton.addEventListener('click', () => {
+    updateStatus("Playing emergency alarm...", 'text-red-700');
+
+    const audio = new Audio('alarm.mp3'); // Path to your alarm file
+    audio.loop = true;
+    audio.play();
+
+    setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        updateStatus("Emergency alarm stopped.", 'text-gray-700');
+    }, 10000); // 10 seconds
+});
+
+
+        /**
+         * Captures a photo from the webcam and displays it.
+         */
+        capturePhotoButton.addEventListener('click', async () => {
+            stopMediaTracks(); // Stop any previous camera streams
+            updateStatus("Capturing photo...", 'text-indigo-700');
+            capturedImage.classList.add('hidden');
+            downloadLink.classList.add('hidden');
+            photoCanvas.classList.add('hidden');
+            videoFeed.classList.add('hidden');
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoFeed.srcObject = videoStream;
+                videoFeed.classList.remove('hidden');
+
+                videoFeed.onloadedmetadata = () => {
+                    // Wait for video to load and then capture
+                    setTimeout(() => {
+                        const context = photoCanvas.getContext('2d');
+                        photoCanvas.width = videoFeed.videoWidth;
+                        photoCanvas.height = videoFeed.videoHeight;
+                        context.drawImage(videoFeed, 0, 0, photoCanvas.width, photoCanvas.height);
+                        
+                        const imageDataUrl = photoCanvas.toDataURL('image/png');
+                        capturedImage.src = imageDataUrl;
+                        capturedImage.classList.remove('hidden');
+                        downloadLink.href = imageDataUrl;
+                        downloadLink.download = 'captured_photo.png';
+                        downloadLink.textContent = 'Download Photo';
+                        downloadLink.classList.remove('hidden');
+
+                        updateStatus("Photo captured!", 'text-indigo-700');
+                        stopMediaTracks(); // Stop camera after capture
+                    }, 500); // Small delay to ensure video stream is ready
+                };
+
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                updateStatus("Could not capture photo. Camera access denied or not available.", 'text-red-600');
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    showMessageBox("Camera access denied. Please allow camera access in your browser settings.");
+                } else if (err.name === 'NotFoundError') {
+                    showMessageBox("No camera found.");
+                }
+            }
+        });
+
+        /**
+         * Starts recording video from the webcam.
+         */
+        startVideoRecordingButton.addEventListener('click', async () => {
+            stopMediaTracks(); // Stop any previous camera streams
+            updateStatus("Starting video recording...", 'text-pink-700');
+            capturedImage.classList.add('hidden');
+            downloadLink.classList.add('hidden');
+            photoCanvas.classList.add('hidden');
+            videoFeed.classList.remove('hidden');
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                videoFeed.srcObject = videoStream;
+
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm; codecs=vp8' });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const videoUrl = URL.createObjectURL(blob);
+                    videoFeed.srcObject = null; // Clear stream from video element
+                    videoFeed.src = videoUrl; // Set recorded video as source
+                    videoFeed.controls = true; // Add controls for playback
+
+                    downloadLink.href = videoUrl;
+                    downloadLink.download = 'recorded_video.webm';
+                    downloadLink.textContent = 'Download Video';
+                    downloadLink.classList.remove('hidden');
+
+                    updateStatus("Video recording finished!", 'text-pink-700');
+                    stopMediaTracks(); // Stop camera after recording
+                };
+
+                mediaRecorder.start();
+                updateStatus("Recording video (10 seconds)...", 'text-pink-700');
+
+                // Stop recording after 10 seconds (configurable)
+                setTimeout(() => {
+                    if (mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                }, 10000); // Record for 10 seconds
+
+            } catch (err) {
+                console.error('Error accessing camera for video:', err);
+                updateStatus("Could not record video. Camera/Mic access denied or not available.", 'text-red-600');
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    showMessageBox("Camera/Microphone access denied. Please allow access in your browser settings.");
+                } else if (err.name === 'NotFoundError') {
+                    showMessageBox("No camera or microphone found.");
+                }
+            }
+        });
+
+        /**
+         * Tracks and opens the user's live location on Google Maps.
+         */
+        liveLocationTrackingButton.addEventListener('click', () => {
+            updateStatus("Getting live location...", 'text-teal-700');
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+                        window.open(mapsUrl, '_blank');
+                        updateStatus("Live location opened in a new tab!", 'text-teal-700');
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        updateStatus("Could not get location. Geolocation access denied or not available.", 'text-red-600');
+                        if (error.code === error.PERMISSION_DENIED) {
+                            showMessageBox("Geolocation access denied. Please allow location access in your browser settings.");
+                        } else if (error.code === error.POSITION_UNAVAILABLE) {
+                            showMessageBox("Location information is unavailable.");
+                        } else if (error.code === error.TIMEOUT) {
+                            showMessageBox("The request to get user location timed out.");
+                        }
+                    }
+                );
+            } else {
+                updateStatus("Geolocation is not supported by your browser.", 'text-red-600');
+                showMessageBox("Geolocation is not supported by your browser.");
+            }
+        });
+
+        /**
+         * Opens a women safety tutorial video on YouTube.
+         */
+        womenSafetyTutorialButton.addEventListener('click', () => {
+            updateStatus("Opening women safety tutorial...", 'text-gray-700');
+            // Using a placeholder YouTube link, replace with actual tutorial link
+            const tutorialUrl = "https://www.youtube.com/watch?v=your_safety_tutorial_video_id"; // Replace with a real YouTube video ID
+            window.open(tutorialUrl, '_blank');
+            updateStatus("Women safety tutorial opened!", 'text-gray-700');
+        });
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ensure video feed is hidden initially
+            videoFeed.classList.add('hidden');
+            capturedImage.classList.add('hidden');
+            downloadLink.classList.add('hidden');
+            photoCanvas.classList.add('hidden');
+        });
+
+    </script>
+</body>
+</html>
